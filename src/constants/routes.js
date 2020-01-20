@@ -1,0 +1,14 @@
+export const WELCOME = '/welcome';
+export const SIGNUP = '/signup';
+export const SIGNIN = '/signin';
+export const RESET = '/reset';
+export const HOME = '/home';
+export const PROFILE = '/profile';
+export const WALLET = '/wallet';
+export const PAYOUT = '/payout';
+export const WITHDRAW = '/withdraw';
+export const SIGNOUT = '/logout';
+export const IDCARD = '/idcard';
+export const VEHICLE = '/vehicle';
+export const INBOX = '/inbox';
+export const ORDER = '/order';
