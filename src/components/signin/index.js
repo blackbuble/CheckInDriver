@@ -8,7 +8,7 @@ import { connect } from 'react-redux'
 import { updateEmail, updatePassword, signin, getUser, getOrders } from '../../actions/user'
 import Firebase from '../../../config/Firebase'
 import Spinner from 'react-native-loading-spinner-overlay';
-import RNMockLocationDetector from "react-native-mock-location-detector";
+
 
 
 const companyLogo = require('../../assets/logo.png');

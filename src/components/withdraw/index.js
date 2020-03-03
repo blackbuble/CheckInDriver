@@ -1,7 +1,7 @@
 import React, { Component } from 'react';
-import { StatusBar, StyleSheet,  Image, AsyncStorage } from 'react-native';
+import { StatusBar, StyleSheet,  Image, BackHandler } from 'react-native';
 import { w, h, totalSize } from '../../api/Dimensions';
-import { withFirebase } from '../firebase';
+import Firebase from '../../../config/Firebase'
 const bank = require('../../assets/money.png');
 import {
   Container,
@@ -27,6 +27,7 @@ import {
   Input,
   Label,
   Item,
+  Toast,
 } from 'native-base';
 import {
   NativeRouter as Router,
@@ -36,26 +37,65 @@ import {
   withRouter,
 } from 'react-router-native';
 import GeneralStatusBarColor from '../../styles/GeneralStatusBarColor';
-import * as ROUTES from '../../constants/routes';
-//import * as firebase from 'firebase';
+import { connect } from 'react-redux'
 
-export default class Payout extends Component {
+
+class Payout extends Component {
   
    constructor(props) {
    super(props);	
-   this.state ={ user:'' }
+   this.state ={ payout:'' }
+   this.handleBackButtonClick = this.handleBackButtonClick.bind(this);
    }  
 
-  
+  _withdraw = () => {
+	  const {payout} = this.state
+	  const uid = Firebase.auth().currentUser.uid;
+	  //alert(uid)
+	  if(this.state.payout > this.props.user.balance || this.state.payout <= 0 ) {
+		  alert("You don't have enough fund")
+	  }
+	  else {
+		  const inbox = { title:'Permintaan Withdraw', body:'Hai..permintaan withdraw mu tengah kami proses. Tunggu kabar selanjutnya ya.', key: uid, createdAt: new Date()}
+		  const transaction = { title:'Withdraw Request dari ' + this.props.user.fullname , amount:this.state.payout, key: uid, createdAt: new Date()}
+		  const balance = {balance:this.props.user.balance - this.state.payout}
+		  Firebase.firestore().collection('transaction').doc().set(transaction)
+		  Firebase.firestore().collection('inbox').doc().set(inbox)
+		  //Firebase.firestore().collection('drivers').doc(uid).update(balance)
+		  Toast.show({
+				text: "Permintaan Withdraw telah dikirim. Tunggu kabar selanjutnya dari kami",
+                duration: 10000,
+                position: "top",
+				type: "success",
+           })
+	  }
+	}
+	
+	componentDidMount() {
+		 BackHandler.addEventListener('hardwareBackPress', this.handleBackButtonClick);
+	}	
+
+	componentWillUnmount() {
+	  // This is the Last method in the activity lifecycle
+	  // Removing Event Listener for the BackPress 
+		  BackHandler.removeEventListener('hardwareBackPress', this.handleBackButtonClick);
+		  console.log(this.state)
+	}
+
+	handleBackButtonClick() {
+	  this.props.navigation.navigate('Home');
+	  return true;
+	}	
 	
   render() {
+	 const {payout} = this.state
     return (
 		   <Container>
         <Header transparent >
 		 <GeneralStatusBarColor backgroundColor="white"
       barStyle="dark-content"/>
           <Left>
-				<Link to='/wallet'><Icon style={{ color: 'green'}} name="arrow-back"></Icon></Link>
+				<Icon style={{ color: 'green'}} name="arrow-back" onPress={ () => this.props.navigation.navigate('Wallet')}></Icon>
 		  </Left>	
 		  <Body>
 				<Title style={{ color: 'green', textAlign: 'center', left: w(8) }}>Withdraw</Title>
@@ -74,7 +114,7 @@ export default class Payout extends Component {
             <CardItem bordered>
               <Body>
                 <H2>
-                  Rp {this.state.user.balance}
+                  Rp {this.props.user.balance}
                 </H2>
               </Body>
             </CardItem>
@@ -87,9 +127,9 @@ export default class Payout extends Component {
 			<Form>
             <Item floatingLabel>
               <Label>Jumlah Withdraw</Label>
-              <Input keyboardType={'numeric'} />
+              <Input value={this.state.payout} onChangeText={payout=>this.setState({payout}) } keyboardType={'numeric'} />
             </Item>
-			<Button success style={styles.buttonContainer}><Text>Withdraw</Text></Button>
+			<Button success style={styles.buttonContainer} onPress={()=>this._withdraw()}><Text>Withdraw</Text></Button>
 			</Form>
 			  
 			</Content>	
@@ -129,6 +169,7 @@ const styles = StyleSheet.create({
     height: 45,
 	justifyContent: 'center',
     alignItems: 'center',
+	marginTop:20,
     marginBottom: 20,
 	marginLeft:10,
 	marginRight: 10,
@@ -145,3 +186,12 @@ const styles = StyleSheet.create({
     marginRight: 'auto',
   },
 });
+
+const mapStateToProps = state => {
+	console.log(state)
+    return {
+        user: state.user
+    }
+}
+
+export default connect(mapStateToProps)(Payout)

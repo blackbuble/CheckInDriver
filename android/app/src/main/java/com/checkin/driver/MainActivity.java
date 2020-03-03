@@ -1,4 +1,4 @@
-package com.test;
+package com.checkin.driver;
 
 import android.os.Bundle; // here
 import com.facebook.react.ReactActivity;

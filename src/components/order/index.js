@@ -1,5 +1,5 @@
 import React, { Component } from 'react';
-import { StatusBar, StyleSheet,  Image, AsyncStorage,Linking } from 'react-native';
+import { StatusBar, StyleSheet,  Image,Linking, TouchableOpacity, View,BackHandler } from 'react-native';
 import { w, h, totalSize } from '../../api/Dimensions';
 const bank = require('../../assets/money.png');
 import {
@@ -28,6 +28,7 @@ import {
   Item,
   Grid,
   Col,
+  Row,
   Accordion,
 } from 'native-base';
 import {
@@ -45,34 +46,41 @@ import GeneralStatusBarColor from '../../styles/GeneralStatusBarColor';
 import CountDown from 'react-native-countdown-component';
 import { Countdown } from 'react-native-countdown-text';
 
-const dataArray = [
-  { title: "First Element", content: "Lorem ipsum dolor sit amet" },
-  { title: "Second Element", content: "Lorem ipsum dolor sit amet" },
-  { title: "Third Element", content: "Lorem ipsum dolor sit amet" }
-];
+function convertToRupiah(angka)
+{
+	var rupiah = '';		
+	var angkarev = angka.toString().split('').reverse().join('');
+	for(var i = 0; i < angkarev.length; i++) if(i%3 == 0) rupiah += angkarev.substr(i,3)+'.';
+	return 'Rp. '+rupiah.split('',rupiah.length-1).reverse().join('');
+}
 
 class Order extends Component {
   
    constructor(props) {
    super(props);	
-   
-   this.onward = Firebase.firestore().collection('orders').where('status','==','on process');
-   this.done = Firebase.firestore().collection('orders').where('status','==','done');
-   this.state ={ user:'',orders: [], }
+	   this.uid = Firebase.auth().currentUser.uid; 
+	   console.log("Here is uid", this.uid)
+	   this.schedule = Firebase.firestore().collection('orders').where('status','==','Assign').where('driverID', '==', this.uid);
+	   this.close = Firebase.firestore().collection('orders').where('status','==','Close').where('driverID', '==', this.uid);
+	   this.hold = Firebase.firestore().collection('orders').where('status','==','On process').where('driverID', '==', this.uid);
+   this.state ={ user:'',orders: [],close: [], hold: [], isDisabled: null, now: new Date().getTime(),code2verify:'' }
+   this.handleBackButtonClick = this.handleBackButtonClick.bind(this);
    }  
    
    onCollectionUpdate = (querySnapshot) => {
 	const orders = [];
 	querySnapshot.forEach((doc) => {
-	const { pick_up_location, route, start_date, end_date,fullname,driverPaid } = doc.data();
+	const { pick_up_location, route, start_date, end_date,fullname,driverPaid, category,mobile_phone } = doc.data();
 	orders.push({
 		  key: doc.id,
 		  doc, // DocumentSnapshot
 		  pick_up_location,
 		  route,
+		  category,
 		  start_date,
 		  end_date,
 		  fullname,
+		  mobile_phone,
 		  count: start_date.toDate().getTime(),	
 		  now: new Date().getTime(),
 		});
@@ -83,26 +91,114 @@ class Order extends Component {
 	 });
 	 console.log(this.state)
 	}
+	
+	
+	
+	
+	onUpdate = (querySnapshot) => {
+	const hold = [];
+	querySnapshot.forEach((doc) => {
+	const { pick_up_location, route, start_date, end_date,fullname,driverPaid, category,mobile_phone,status,tripCode } = doc.data();
+	hold.push({
+		  key: doc.id,
+		  doc, // DocumentSnapshot
+		  pick_up_location,
+		  route,
+		  category,
+		  start_date,
+		  end_date,
+		  fullname,
+		  mobile_phone,
+		  status,
+		  tripCode,
+		  count: start_date.toDate().getTime(),	
+		  now: new Date().getTime(),
+		});
+	  });
+	  this.setState({
+		hold,
+		isLoading: false,
+	 });
+	 console.log(this.state)
+	}
+   
+   onColUpdate = (querySnapshot) => {
+	const close = [];
+	querySnapshot.forEach((doc) => {
+	const { pick_up_location, route, start_date, end_date,fullname,driverPaid, category,mobile_phone,status,tripCode } = doc.data();
+	close.push({
+		  key: doc.id,
+		  doc, // DocumentSnapshot
+		  pick_up_location,
+		  route,
+		  category,
+		  start_date,
+		  end_date,
+		  fullname,
+		  mobile_phone,
+		  status,
+		  tripCode,
+		  count: start_date.toDate().getTime(),	
+		  now: new Date().getTime(),
+		});
+	  });
+	  this.setState({
+		close,
+		isLoading: false,
+	 });
+	 console.log(this.state)
+	}
    
    launchChat() {
 	  // alert('Open Whatsapp');
-	   Linking.openURL('whatsapp://send?phone=628111');
+	   Linking.openURL('whatsapp://send?phone=6281333319428');
    }
 
-  componentDidMount() {
-	  this.uid = Firebase.auth().currentUser.uid; 
-	   console.log("Here is uid", this.uid)
-	   this.schedule = Firebase.firestore().collection('orders').where('status','==','Assign').where('driverID', '==', this.uid);
-	   console.log(this.schedule)
-	  this.unsubscribe = this.schedule.onSnapshot(this.onCollectionUpdate);
-	  //console.log('Condition',this.props.user)
+	_action = (e,id,date) => {
+		console.log('This shoul be fine', this.state.start_date)
+		//alert(date)
+		this.props.navigation.navigate('OrderDetail',{uid: id,orderDate: date})
+	}
+	
+	_changeAction = (e) => {
+		console.log("This is id from counter", e)
+		this.setState({isDisabled:e})
+	}
+	
+	_verifyCode = (e,code,date) => {
+		this.props.navigation.navigate('OrderClose',{uid: code,orderDate: date})
+		/* alert('this is id' + code)
+		alert(date)
+		alert('This is' + e) */
+		
+	}
+	
+	
+	
+	componentDidMount() {
+	
 	  
+	  this.unsubscribe = this.schedule.onSnapshot(this.onCollectionUpdate);
+	  this.unsub = this.close.onSnapshot(this.onColUpdate);
+	  this.unsubHold = this.hold.onSnapshot(this.onUpdate);
+	  //console.log('Condition',this.props.user)
+	  BackHandler.addEventListener('hardwareBackPress', this.handleBackButtonClick);
   }	
-	
-  
-  
-	
+
+	componentWillUnmount() {
+	  // This is the Last method in the activity lifecycle
+	  // Removing Event Listener for the BackPress 
+		  BackHandler.removeEventListener('hardwareBackPress', this.handleBackButtonClick);
+		  console.log(this.state)
+	}
+
+	handleBackButtonClick() {
+	  this.props.navigation.navigate('Home');
+	  return true;
+	}	
+ 
   render() {
+	   const {code2verify} = this.state
     return (
 		<Container>
 			<Header transparent>
@@ -113,7 +209,7 @@ class Order extends Component {
 			  <Body />
 			   <Right>
 				<Button transparent>
-					<Icon type="Feather" name='trash-2' style={{ color: 'green', fontSize:28}} />
+					<Icon type="Feather" name='trash-2' style={{ color: 'transparent', fontSize:28}} />
 				</Button>
 			  </Right>
 			
@@ -124,143 +220,201 @@ class Order extends Component {
 					
 					{
 					this.state.orders.map((item,index) => (
-					<ListItem icon style={{marginTop:h(2), marginBottom:h(2), alignItems:'center', justifyContent:'center'}}>
-						<Left>
-						  
-						  <Button style={{ backgroundColor: "#37A000", height:35, width:35, borderRadius:35/2 }}>
+					<>
+					<Card style={{marginLeft:w(3), marginRight:w(3), borderRadius:h(2)}} key={index}>
+						<CardItem bordered>
+					  <Body>
+						<Grid>
+					    <Col>
+							<Text style={{marginLeft:w(2),fontWeight:'bold'}}>{item.category}</Text>
+						</Col>
+						<Col>
+							<Text style={{fontWeight:'bold'}}>{item.fullname}</Text>
+						</Col> 
+						</Grid>
+						<Grid>
 							
-							<Icon type="MaterialCommunityIcons" name="car-hatchback" style={{fontSize:30}}/>
-						  </Button>
-						</Left>
-						<Body style={{}}>
-							<Grid style={{marginBottom:h(12)}} >
-								<Col>
-									<Text style={{fontSize:15, fontWeight:'bold'}}>{item.pick_up_location}</Text>
-									<Text style={{fontSize:14}}>{item.route}</Text>
-									<CountDown
-									    id={item.id}
-										until={ (item.count - item.now)/1000}
-										onFinish={() => alert('finished')}
-										onPress={() => alert('hello')}
-										size={8}
-										style={{marginTop:h(2.5),marginLeft:w(-30)}}
-									  />
+							<Col style={{justifyContent:'flex-start',alignItems:'flex-start'}}>
+								<Text style={{fontSize:14}}> {item.pick_up_location}</Text>
+									<ListItem icon>
+										  <Left>
+											 <Icon type="Feather" name="calendar" style={{fontSize:18}}/>
+											  <Text style={{fontSize:14}}>{new Date(item.start_date.toDate()).toLocaleString('en-US',{hour12:false})}</Text>
+										  </Left>
+										  <Body />
+									</ListItem>
 									
-									 
-								</Col>
 								
-							</Grid>
+							</Col>
+							<Col style={{width:w(5),justifyContent:'flex-start',alignItems:'center'}}>
+								<Icon type="Feather" name="arrow-right" style={{color:'red', fontSize: 16}}></Icon>
+							</Col>
+							<Col style={{justifyContent:'flex-start',alignItems:'flex-start'}}>
+								<Text style={{fontSize:14, height:20}}>{item.route}</Text>
+								<ListItem icon>
+										  <Left>
+											 
+											 
+											  <CountDown
+												id={item.key}
+												until={ (item.count - item.now)/1000}
+												onFinish={()=>this._changeAction(item.key)}
+												onPress={() => alert('Selalu Perhatikan Waktu Penjemputan')}
+												size={12}
+												style={{marginTop:h(2.5)}}
+											  />
 									
-						</Body>
-						<Right>
-							<Button warning onPress={this.launchChat}><Text style={{fontSize:10}}>Cancel</Text></Button>
-						</Right>	
-					</ListItem>
+										  </Left>
+										  <Body />
+								</ListItem>
+									
+							</Col>
+						</Grid>
+						
+						<ListItem icon>
+										  <Left style={{marginLeft:w(-4)}}>
+												<Icon type="Feather" name="smartphone" style={{fontSize:18}}/>
+											
+												<TouchableOpacity onPress={()=>Linking.openURL(`tel:${item.mobile_phone}`)}>
+													<Text>{item.mobile_phone}</Text>
+												</TouchableOpacity>	
+										  </Left>
+										  <Body />
+										 
+						</ListItem>	
+						
+						
+						<Grid>
+						<Col>
+
+							<Button  success id={item.key} data-start={item.count} data-date={item.start_date} onPress={()=>this._action(item.count,item.key,item.start_date)} style={{ marginLeft:'auto',marginRight:'auto', width:w(40), alignItems:'center', justifyContent:'center'}}><Text>Mulai</Text></Button>	
+						</Col>
+						<Col>	
+							<Button danger style={{ marginLeft:'auto',marginRight:'auto', width:w(40),alignItems:'center', justifyContent:'center'}} onPress={this.launchChat}><Text>Cancel</Text></Button>	
+						</Col>
+					</Grid>		
+							
+					  </Body>
+					</CardItem>
+					
+					</Card>
+					
+					
+					</>
 					))
 					}
 				
-				<Text style={{marginLeft:w(4), marginTop:h(2), marginBottom:h(2),fontWeight:'bold', fontSize:18}}>Lagi Berjalan</Text>
+				<Text style={{marginLeft:w(4), marginTop:h(2), marginBottom:h(2),fontWeight:'bold', fontSize:18}}>Yang Belum Selesai</Text>
+				{
+					this.state.hold.map((item,index) => (
+					<>
+					<Card style={{marginLeft:w(3), marginRight:w(3), borderRadius:h(2)}} key={index}>
+						<CardItem bordered>
+					  <Body>
+						<Grid>
+					    <Col>
+							<Text style={{marginLeft:w(2),fontWeight:'bold'}}>{item.category}</Text>
+						</Col>
+						<Col>
+							<Text style={{fontWeight:'bold'}}>{item.fullname}</Text>
+						</Col> 
+						</Grid>
+						<Grid>
+							
+							<Col style={{justifyContent:'flex-start',alignItems:'flex-start'}}>
+								<Text style={{fontSize:14}}> {item.pick_up_location}</Text>
+									<ListItem icon>
+										  <Left>
+											 <Icon type="Feather" name="calendar" style={{fontSize:18}}/>
+											  <Text style={{fontSize:14}}>{new Date(item.start_date.toDate()).toLocaleString('en-US',{hour12:false})}</Text>
+										  </Left>
+										  <Body />
+									</ListItem>
+									
+								
+							</Col>
+							<Col style={{width:w(5),justifyContent:'flex-start',alignItems:'center'}}>
+								<Icon type="Feather" name="arrow-right" style={{color:'red', fontSize: 16}}></Icon>
+							</Col>
+							<Col style={{justifyContent:'flex-start',alignItems:'flex-start'}}>
+								<Text style={{fontSize:14, height:20}}>{item.route}</Text>
+								<ListItem icon>
+										  <Left>
+										  <Text>{item.category}</Text>
+										  </Left>
+										  <Body />
+								</ListItem>
+									
+							</Col>
+						</Grid>
+					<Button  success id={item.key} data-start={item.count} data-date={item.start_date} onPress={()=>this._verifyCode(item.count,item.key,item.start_date)} style={{ marginLeft:'auto',marginRight:'auto', width:w(80), alignItems:'center', justifyContent:'center'}}><Text>Mulai</Text></Button>	
+							
+					  </Body>
+					</CardItem>
+					
+					</Card>
+					
+					
+					</>
+					))
+					}
+				
 			
 				<Text style={{marginLeft:w(4), marginTop:h(2), marginBottom:h(2),fontWeight:'bold', fontSize:18}}>Yang Sudah Lewat</Text>
-				<List noIndent>
 				
-					<ListItem icon style={{marginTop:h(2), marginBottom:h(2), alignItems:'center', justifyContent:'center'}}>
-						<Left>
-						  
-						  <Button style={{ backgroundColor: "#37A000", height:35, width:35, borderRadius:35/2 }}>
+				{
+					this.state.close.map((item,index) => (
+					<>
+					<Card style={{marginLeft:w(3), marginRight:w(3), borderRadius:h(2)}} key={index}>
+						<CardItem bordered>
+					  <Body>
+						<Grid>
+					    <Col>
+							<Text style={{marginLeft:w(2),fontWeight:'bold'}}>{item.category}</Text>
+						</Col>
+						<Col>
+							<Text style={{fontWeight:'bold'}}>{item.fullname}</Text>
+						</Col> 
+						</Grid>
+						<Grid>
 							
-							<Icon type="MaterialCommunityIcons" name="car-hatchback" style={{fontSize:30}}/>
-						  </Button>
-						</Left>
-						<Body style={{height:h(8)}}>
-							<Grid >
-								<Col>
-									<Text style={{fontSize:16, fontWeight:'bold'}}>Permintaan withdraw #WDSBY001</Text>
-									<Text style={{fontSize:14}}>Tungguin transferan dari CheckIn</Text>
-								</Col>
-							</Grid>
-							
-						</Body>
-					</ListItem>
+							<Col style={{justifyContent:'flex-start',alignItems:'flex-start'}}>
+								<Text style={{fontSize:14}}> {item.pick_up_location}</Text>
+									<ListItem icon>
+										  <Left>
+											 <Icon type="Feather" name="calendar" style={{fontSize:18}}/>
+											  <Text style={{fontSize:14}}>{new Date(item.start_date.toDate()).toLocaleString('en-US',{hour12:false})}</Text>
+										  </Left>
+										  <Body />
+									</ListItem>
+									
+								
+							</Col>
+							<Col style={{width:w(5),justifyContent:'flex-start',alignItems:'center'}}>
+								<Icon type="Feather" name="arrow-right" style={{color:'red', fontSize: 16}}></Icon>
+							</Col>
+							<Col style={{justifyContent:'flex-start',alignItems:'flex-start'}}>
+								<Text style={{fontSize:14, height:20}}>{item.route}</Text>
+								<ListItem icon>
+										  <Left>
+										  <Text>{item.category}</Text>
+										  </Left>
+										  <Body />
+								</ListItem>
+									
+							</Col>
+						</Grid>
 					
-					<ListItem icon style={{marginTop:h(2), marginBottom:h(2), alignItems:'center', justifyContent:'center'}}>
-						<Left>
-						  
-						  <Button style={{ backgroundColor: "#37A000", borderRadius:50 }}>
 							
-							<Icon type="MaterialCommunityIcons" name="email-outline" style={{fontSize:18}}/>
-						  </Button>
-						</Left>
-						<Body style={{height:h(8)}}>
-							<Grid >
-								<Col>
-									<Text style={{fontSize:16, fontWeight:'bold'}}>Kode Perjalanan #PQ1234</Text>
-									<Text style={{fontSize:14}}>Ini loh kode perjalanan kemarin</Text>
-								</Col>
-							</Grid>
-							
-						</Body>
-					</ListItem>
+					  </Body>
+					</CardItem>
 					
-					<ListItem icon style={{marginTop:h(2), marginBottom:h(2), alignItems:'center', justifyContent:'center'}}>
-						<Left>
-						  
-						  <Button style={{ backgroundColor: "#37A000", borderRadius:50 }}>
-							
-							<Icon type="MaterialCommunityIcons" name="email-outline" style={{fontSize:18}}/>
-						  </Button>
-						</Left>
-						<Body style={{height:h(8)}}>
-							<Grid >
-								<Col>
-									<Text style={{fontSize:16, fontWeight:'bold'}}>Kode Perjalanan #PQ2233</Text>
-									<Text style={{fontSize:14}}>Ini loh kode perjalanan kemarin</Text>
-								</Col>
-							</Grid>
-							
-						</Body>
-					</ListItem>
-					
-					<ListItem icon style={{marginTop:h(2), marginBottom:h(2), alignItems:'center', justifyContent:'center'}}>
-						<Left>
-						  
-						  <Button style={{ backgroundColor: "#37A000", borderRadius:50 }}>
-							<Badge style={{height:h(1), width:w(1), right:0, position:'absolute',zIndex:1}}/>	
-							<Icon type="MaterialCommunityIcons" name="email-outline" style={{fontSize:18}}/>
-						  </Button>
-						</Left>
-						<Body style={{height:h(8)}}>
-							<Grid >
-								<Col>
-									<Text style={{fontSize:16, fontWeight:'bold'}}>Pesan dari CheckIn</Text>
-									<Text style={{fontSize:14}}>Ada yang baru loh di aplikasi</Text>
-								</Col>
-							</Grid>
-							
-						</Body>
-					</ListItem>
-					
-					<ListItem icon style={{marginTop:h(2), marginBottom:h(2), alignItems:'center', justifyContent:'center'}}>
-						<Left>
-						  
-						  <Button style={{ backgroundColor: "#37A000", borderRadius:50 }}>
-							<Badge style={{height:h(1), width:w(1), right:0, position:'absolute',zIndex:1}}/>	
-							<Icon type="MaterialCommunityIcons" name="email-outline" style={{fontSize:18}}/>
-						  </Button>
-						</Left>
-						<Body style={{height:h(8)}}>
-							<Grid >
-								<Col>
-									<Text style={{fontSize:16, fontWeight:'bold'}}>Selamat Datang</Text>
-									<Text style={{fontSize:14}}>Baca dulu yuk sebelum pakai CheckIn</Text>
-								</Col>
-							</Grid>
-							
-						</Body>
-					</ListItem>
+					</Card>
 					
 					
-				</List>
+					</>
+					))
+					}
 				
 			
 			  

@@ -6,9 +6,13 @@ import Signup from '../components/signup'
 import NextPage from '../components/signup/idcard'
 import Home from '../components/home'
 import Inbox from '../components/inbox'
+import Message from '../components/inbox/message'
 import Order from '../components/order'
+import OrderDetail from '../components/order/detail'
+import OrderClose from '../components/order/close'
 import Profile from '../components/profile'
 import Wallet from '../components/wallet'
+import Withdraw from '../components/withdraw'
 
 const SwitchNavigator = createSwitchNavigator(
     {
@@ -30,14 +34,26 @@ const SwitchNavigator = createSwitchNavigator(
 		Inbox: {
             screen: Inbox
         },
+		Message: {
+            screen: Message
+        },
 		Order: {
             screen: Order
+        },
+		OrderDetail: {
+            screen: OrderDetail
+        },
+		OrderClose: {
+            screen: OrderClose
         },
 		Profile: {
             screen: Profile
         },
 		Wallet: {
             screen: Wallet
+        },
+		Withdraw: {
+            screen: Withdraw
         }
     },
     {

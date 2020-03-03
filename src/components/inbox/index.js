@@ -1,5 +1,5 @@
 import React, { Component } from 'react';
-import { StatusBar, StyleSheet,  Image, AsyncStorage } from 'react-native';
+import { StatusBar, StyleSheet,  Image,BackHandler } from 'react-native';
 import { w, h, totalSize } from '../../api/Dimensions';
 const bank = require('../../assets/money.png');
 import {
@@ -47,6 +47,7 @@ class Inbox extends Component {
    super(props);	
    
    this.state ={ user:'',inbox:[] }
+    this.handleBackButtonClick = this.handleBackButtonClick.bind(this);
    }  
 
   onCollectionUpdate = (querySnapshot) => {
@@ -69,11 +70,23 @@ class Inbox extends Component {
   componentDidMount() {
 	 let userID = Firebase.auth().currentUser.uid; 
 	 this.setState({userID: userID})
-	 this.ref = Firebase.firestore().collection('inbox').where('key', '==',userID);
+	 this.ref = Firebase.firestore().collection('inbox').where('key', '==',userID).where('visible', '==', true);
 	 //console.log(this.ref)
 	 this.unsubscribe = this.ref.onSnapshot(this.onCollectionUpdate);
+	 BackHandler.addEventListener('hardwareBackPress', this.handleBackButtonClick);
   }	
-	
+
+	componentWillUnmount() {
+	  // This is the Last method in the activity lifecycle
+	  // Removing Event Listener for the BackPress 
+		  BackHandler.removeEventListener('hardwareBackPress', this.handleBackButtonClick);
+		  console.log(this.state)
+	}
+
+	handleBackButtonClick() {
+	  this.props.navigation.navigate('Home');
+	  return true;
+	}	
   
 	
   render() {
@@ -96,7 +109,11 @@ class Inbox extends Component {
 				<List noIndent>
 				{
 					  this.state.inbox.map((item,index) => (
-					  <ListItem icon style={{marginTop:h(2), marginBottom:h(2), alignItems:'center', justifyContent:'center'}}>
+					  <ListItem icon style={{marginTop:h(2), marginBottom:h(2), alignItems:'center', justifyContent:'center'}} onPress={() => {
+							this.props.navigation.navigate('Message', {
+							messagekey: `${JSON.stringify(item.keyAccess)}`,
+							});
+							}}>
 						<Left>
 						  
 						  <Button style={{ backgroundColor: "#37A000", borderRadius:50 }}>

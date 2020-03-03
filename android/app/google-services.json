@@ -8,9 +8,9 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:760554833861:android:e89dd8956f0bda6878edac",
+        "mobilesdk_app_id": "1:760554833861:android:a1fe7cae980ad64178edac",
         "android_client_info": {
-          "package_name": "id.checkin.driver"
+          "package_name": "com.checkin.driver"
         }
       },
       "oauth_client": [

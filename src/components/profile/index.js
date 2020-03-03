@@ -1,5 +1,5 @@
 import React, {Component} from 'react'
-import { View,StyleSheet, Image } from 'react-native'
+import { View,StyleSheet, Image, BackHandler } from 'react-native'
 import { Container, Header, Content, Footer, FooterTab, Button, Icon, Text, Right, Left, Body, Title, Thumbnail, Badge, Grid, Col, ListItem, List, Separator } from 'native-base';
 import { w, h, totalSize } from '../../api/Dimensions';
 import GeneralStatusBarColor from '../../styles/GeneralStatusBarColor';
@@ -8,10 +8,29 @@ import Firebase from '../../../config/Firebase'
 
 class Profile extends Component {
 	
+	constructor() {
+		super()
+		this.handleBackButtonClick = this.handleBackButtonClick.bind(this);
+	}
+
+	
 	componentDidMount(){
 		console.log(this.props)
 		
+	 BackHandler.addEventListener('hardwareBackPress', this.handleBackButtonClick);
+	}	
+
+	componentWillUnmount() {
+	  // This is the Last method in the activity lifecycle
+	  // Removing Event Listener for the BackPress 
+		  BackHandler.removeEventListener('hardwareBackPress', this.handleBackButtonClick);
+		  console.log(this.state)
 	}
+
+	handleBackButtonClick() {
+	  this.props.navigation.navigate('Home');
+	  return true;
+	}	
 	
 	handleSignout = () => {
         Firebase.auth().signOut()
@@ -43,7 +62,7 @@ class Profile extends Component {
 								<Text style={styles.text}>{this.props.user.fullname}</Text>
 								<ListItem style={{borderBottomWidth:0}}>
 								  <Left style={{marginLeft:w(-4.5),top:h(-1.5), width:w(40)}}>
-									 <Text style={styles.textTitle}>Bergabung sejak </Text>
+									 <Text style={styles.textTitle}>Bergabung sejak {new Date(this.props.user.createdAt.toDate()).toLocaleString()}</Text>
 									   <Icon type="MaterialCommunityIcons" name="chevron-right"  style={{fontSize:18,color:'white'}}/>
 								  </Left>
 								  <Body/>
@@ -191,7 +210,7 @@ const styles = StyleSheet.create({
 		color:'white'
 	},
 	textTitle: {
-		fontSize: 14,
+		fontSize: 12,
 		color:'white'
 	},
 	avatar: {

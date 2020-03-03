@@ -1,5 +1,6 @@
 import firebase from 'firebase'
 import 'firebase/firestore'
+
 import {
     API_KEY,
     AUTH_DOMAIN,
@@ -32,6 +33,8 @@ const firebaseConfig = {
 const Firebase = firebase.initializeApp(firebaseConfig)
 
 export const db = firebase.firestore()
+
+//export const message = firebase.messaging()
 
 // avoid deprecated warnings
 /* db.settings({

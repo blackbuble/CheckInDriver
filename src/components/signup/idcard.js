@@ -34,7 +34,7 @@ import {
   Redirect,
   withRouter,
 } from 'react-router-native';
-import { StyleSheet, View, ScrollView, TouchableOpacity, Platform, StatusBar, AsyncStorage, KeyboardAvoidingView,TouchableHighlight, Image, Alert } from 'react-native';
+import { StyleSheet, View, ScrollView, TouchableOpacity, Platform, StatusBar, KeyboardAvoidingView,TouchableHighlight, Image, Alert } from 'react-native';
 import ToggleSwitch from 'toggle-switch-react-native';
 import { w, h, totalSize } from '../../api/Dimensions';
 import * as ROUTES from '../../constants/routes';

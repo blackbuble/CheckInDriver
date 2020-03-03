@@ -24,7 +24,7 @@ import {
  
 } from 'native-base';
 
-import { StyleSheet, View, TouchableOpacity,TouchableHighlight, Platform, StatusBar, AsyncStorage, Image, ImageBackground, ScrollView,Alert,List, ActivityIndicator } from 'react-native';
+import { StyleSheet, View, TouchableOpacity,TouchableHighlight, Platform, StatusBar,  Image, ImageBackground, ScrollView,Alert,List, ActivityIndicator, BackHandler } from 'react-native';
 import ToggleSwitch from 'toggle-switch-react-native';
 import { w, h, totalSize } from '../../api/Dimensions';
 import { connect } from 'react-redux'
@@ -64,12 +64,13 @@ class HomePage extends Component {
 	orders: [],
 	
 	};
+	 this.handleBackButtonClick = this.handleBackButtonClick.bind(this);
   }
   
   onCollectionUpdate = (querySnapshot) => {
   const orders = [];
   querySnapshot.forEach((doc) => {
-    const { pick_up_location, route, start_date, end_date,fullname,driverPaid } = doc.data();
+    const { pick_up_location, route, start_date, end_date,fullname,driverPaid,category } = doc.data();
     orders.push({
       key: doc.id,
       doc, // DocumentSnapshot
@@ -78,7 +79,8 @@ class HomePage extends Component {
       start_date,
 	  end_date,
 	  fullname,
-	  driverPaid
+	  driverPaid,
+	  category
     });
   });
   this.setState({
@@ -88,16 +90,43 @@ class HomePage extends Component {
  console.log(this.state)
 }
    
-  componentDidMount() {
+	componentDidMount() {
+	  console.log(this.props.user.isActive)
 	  if(this.props.user.isActive == true){
-	 this.ref = Firebase.firestore().collection('orders').where('status','==','Open');
+	 this.ref = Firebase.firestore().collection('orders').where('status','==','Open').where('area', '==', this.props.user.working_area);
 	 this.unsubscribe = this.ref.onSnapshot(this.onCollectionUpdate);
 	 let userID = Firebase.auth().currentUser.uid; 
 	 this.setState({userID: userID})
 	 console.log(this.props.user.uid)
 	 console.log("Here user id from home", userID)
+	 console.log(this.props.user.working_area)
 	  }
-  }	
+	BackHandler.addEventListener('hardwareBackPress', this.handleBackButtonClick);
+	}	
+
+	componentWillUnmount() {
+	  // This is the Last method in the activity lifecycle
+	  // Removing Event Listener for the BackPress 
+		  BackHandler.removeEventListener('hardwareBackPress', this.handleBackButtonClick);
+		  console.log(this.state)
+	}
+
+	handleBackButtonClick = () => {
+		Alert.alert(
+			'Keluar Aplikasi',
+			'Apakah anda akan keluar dari aplikasi?', [{
+				text: 'Batal',
+				onPress: () => console.log('Cancel Pressed'),
+				style: 'cancel'
+			}, {
+				text: 'Ya',
+				onPress: () => BackHandler.exitApp()
+			}, ], {
+				cancelable: false
+			}
+		 )
+	  return true;
+	  }	
   
   orderTaken = uid => {
 	  console.log(uid)
@@ -145,7 +174,7 @@ class HomePage extends Component {
 		  <Body />
 		  <Right>
 			<Button transparent>
-				<Icon type="Ionicons" name='ios-notifications-outline' style={{ color: 'green', fontWeight:'bold', fontSize:30}} />
+				<Icon type="Ionicons" name='ios-notifications-outline' style={{ color: 'transparent', fontWeight:'bold', fontSize:30}} />
 			</Button>
 		  </Right>
 		 
@@ -188,12 +217,12 @@ class HomePage extends Component {
 			<Grid >
 				<Col style={{top:h(1),width:w(50), justifyContent:'center',alignItems:'center'}}>
 					<Text style={styles.textTitle}>Trip</Text>
-					<Text style={styles.text}> {this.props.user.balance}</Text>
+					<Text style={styles.text}> 0</Text>
 					
 				</Col>	
 				<Col style={{top:h(1),width:w(50), justifyContent:'center',alignItems:'center'}}>
 					<Text style={styles.textTitle}>Income</Text>
-					<Text style={styles.text}>Rp {this.props.user.balance}</Text>
+					<Text style={styles.text}>{(this.props.user.balance)}</Text>
 					
 				</Col>
 				
@@ -214,61 +243,118 @@ class HomePage extends Component {
 		 
 		  
 			{
-			  this.state.orders.map((item,index) => (
-			  <>
-				<Card style={{marginLeft:w(3), marginRight:w(3)}} key={index}>
-					<CardItem bordered>
-				  <Body>
-					<Grid>
-						<Col style={{justifyContent:'flex-start',alignItems:'flex-start'}}>
-							<Text style={{fontSize:14}}> {item.pick_up_location}</Text>
-								<ListItem icon>
-									  <Left>
-										 <Icon type="Feather" name="calendar" style={{fontSize:18}}/>
-										  <Text style={{fontSize:14}}>{new Date(item.start_date.toDate()).toLocaleString('en-US',{hour12:false})}</Text>
-									  </Left>
-									  <Body />
-								</ListItem>
-								
-							
-						</Col>
-						<Col style={{width:w(5),justifyContent:'flex-start',alignItems:'center'}}>
-							<Icon type="Feather" name="arrow-right" style={{color:'red', fontSize: 16}}></Icon>
-						</Col>
-						<Col style={{justifyContent:'flex-start',alignItems:'flex-start'}}>
-							<Text style={{fontSize:14}}>{item.route}</Text>
-							<ListItem icon>
-									  <Left>
-										 <Icon type="Feather" name="calendar" style={{fontSize:18}}/>
-										  <Text style={{fontSize:14}}>{new Date(item.end_date.toDate()).toLocaleString('en-US',{hour12:false})}</Text>
-									  </Left>
-									  <Body />
-							</ListItem>
-								
-						</Col>
-					</Grid>
-					
-					<ListItem icon>
-									  <Left style={{marginLeft:w(-2)}}>
-										 <Text style={styles.title}>{item.fullname}</Text>
-									  </Left>
-									  <Body />
-									  <Right>
+			  this.state.orders.map((item,index) => {
+				 if(item.category == 'Rental') 
+					return(
+						  <>
+							<Card style={{marginLeft:w(3), marginRight:w(3)}} key={index}>
+								<CardItem bordered>
+							  <Body>
+								<Grid>
+									<Col style={{justifyContent:'flex-start',alignItems:'flex-start'}}>
+										<Text style={{fontSize:14}}> {item.pick_up_location}</Text>
+											<ListItem icon>
+												  <Left>
+													 <Icon type="Feather" name="calendar" style={{fontSize:18}}/>
+													  <Text style={{fontSize:14}}>{new Date(item.start_date.toDate()).toLocaleString('en-US',{hour12:false})}</Text>
+												  </Left>
+												  <Body />
+											</ListItem>
+											
 										
-										<Text>{convertToRupiah(item.driverPaid)}</Text>
-									  </Right>
-					</ListItem>	
-				  	
+									</Col>
+									<Col style={{width:w(5),justifyContent:'flex-start',alignItems:'center'}}>
+										<Icon type="Feather" name="arrow-right" style={{color:'red', fontSize: 16}}></Icon>
+									</Col>
+									<Col style={{justifyContent:'flex-start',alignItems:'flex-start'}}>
+										<Text style={{fontSize:14, height:20}}>{item.route}</Text>
+										<ListItem icon>
+												  <Left>
+													 
+													  <Text style={{fontSize:14}}>{item.category}</Text>
+												  </Left>
+												  <Body />
+										</ListItem>
+											
+									</Col>
+								</Grid>
+								
+								<ListItem icon>
+												  <Left style={{marginLeft:w(-2)}}>
+													 <Text style={styles.title}>{item.fullname}</Text>
+												  </Left>
+												  <Body />
+												  <Right>
+													
+													<Text>{convertToRupiah(item.driverPaid)}</Text>
+												  </Right>
+								</ListItem>	
+								
+								
+								<Button bordered success style={{ marginLeft:'auto',marginRight:'auto', width:w(80), alignItems:'center', justifyContent:'center'}} onPress={ () => this.orderTaken(item.key)}><Text>Ambil</Text></Button>	
+									
+							  </Body>
+							</CardItem>
+							
+							</Card>
+						  </>	)
 					
-					<Button bordered success style={{ marginLeft:'auto',marginRight:'auto', width:w(80), alignItems:'center', justifyContent:'center'}} onPress={ () => this.orderTaken(item.key)}><Text>Ambil</Text></Button>	
-						
-				  </Body>
-				</CardItem>
+					return(
+						<>
+								<Card style={{marginLeft:w(3), marginRight:w(3)}} key={index}>
+								<CardItem bordered>
+							  <Body>
+								<Grid>
+									<Col style={{justifyContent:'flex-start',alignItems:'flex-start'}}>
+										<Text style={{fontSize:14}}> {item.pick_up_location}</Text>
+											<ListItem icon>
+												  <Left>
+													 <Icon type="Feather" name="calendar" style={{fontSize:18}}/>
+													  <Text style={{fontSize:14}}>{new Date(item.start_date.toDate()).toLocaleString('en-US',{hour12:false})}</Text>
+												  </Left>
+												  <Body />
+											</ListItem>
+											
+										
+									</Col>
+									<Col style={{width:w(5),justifyContent:'flex-start',alignItems:'center'}}>
+										<Icon type="Feather" name="arrow-right" style={{color:'red', fontSize: 16}}></Icon>
+									</Col>
+									<Col style={{justifyContent:'flex-start',alignItems:'flex-start'}}>
+										<Text style={{fontSize:14, height:20}}>{item.route}</Text>
+										<ListItem icon>
+												  <Left>
+													 
+													  <Text style={{fontSize:14}}>{item.category}</Text>
+												  </Left>
+												  <Body />
+										</ListItem>
+											
+									</Col>
+								</Grid>
+								
+								<ListItem icon>
+												  <Left style={{marginLeft:w(-2)}}>
+													 <Text style={styles.title}>{item.fullname}</Text>
+												  </Left>
+												  <Body />
+												  <Right>
+													
+													<Text>{convertToRupiah(item.driverPaid)}</Text>
+												  </Right>
+								</ListItem>	
+								
+								
+								<Button bordered success style={{ marginLeft:'auto',marginRight:'auto', width:w(80), alignItems:'center', justifyContent:'center'}} onPress={ () => this.orderTaken(item.key)}><Text>Ambil</Text></Button>	
+									
+							  </Body>
+							</CardItem>
+							
+							</Card>
+						</>
+					)	  
 				
-				</Card>
-			  </>	
-				
-			  ))
+			  })
 			}
 				  
 		  </ScrollView>	
